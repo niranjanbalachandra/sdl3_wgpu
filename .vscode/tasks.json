@@ -1,0 +1,94 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CMake: Configure (Desktop)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S", ".",
+                "-B", "build",
+                "-DIMGUI_WGPU_DIR=${input:imguiWgpuDir}"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "CMake: Build (Desktop)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build", "build",
+                "--config", "Debug"
+            ],
+            "dependsOn": ["CMake: Configure (Desktop)"],
+            "group": "build",
+            "problemMatcher": ["$msCompile"]
+        },
+        {
+            "label": "Run: Desktop Example",
+            "type": "shell",
+            "command": "${workspaceFolder}\\build\\Debug\\example_sdl3_wgpu.exe",
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "CMake: Configure (Emscripten)",
+            "type": "shell",
+            "command": "${env:EMSDK}/upstream/emscripten/emcmake.bat",
+            "args": [
+                "cmake", "-G", "Ninja", "-B", "build_web", "-S", ".", "-DIMGUI_EMSCRIPTEN_WEBGPU_FLAG=--use-port=emdawnwebgpu"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "CMake: Build (Emscripten)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build", "build_web", "--config", "Debug"
+            ],
+            "dependsOn": ["CMake: Configure (Emscripten)"],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run: Emscripten (emrun)",
+            "type": "shell",
+            "command": "${env:EMSDK}/upstream/emscripten/emrun.bat",
+            "args": [
+                "--no_browser", "build_web/index.html"
+            ],
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Clean: build",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "build", "--target", "clean"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Clean: build_web",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "build_web", "--target", "clean"],
+            "problemMatcher": []
+        }
+    ]
+    ,
+    "inputs": [
+        {
+            "id": "imguiWgpuDir",
+            "type": "promptString",
+            "description": "Path to WGPU-native SDK (folder containing include/ and lib/)",
+            "default": "..\\webgpu-native\\v27.0.2.0\\debug"
+        }
+    ]
+}
