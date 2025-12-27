@@ -1,99 +1,92 @@
-# imgui_example_sdl3_wgpu
+# sdl3_wgpu
 
 Small example project demonstrating Dear ImGui with SDL3 and WebGPU (WGPU-native or Emscripten).
 
 This repository contains a minimal ImGui + SDL3 application that can be built for desktop using WGPU-native, or for the web using Emscripten.
+# sdl3_wgpu
 
-## Repository layout
+Minimal example demonstrating Dear ImGui with SDL3 and WebGPU (native WGPU or Emscripten).
 
-- `CMakeLists.txt` - main build configuration for desktop and Emscripten targets.
-- `main.cpp` - example application entry.
-- `shell_minimal.html` - minimal shell used for Emscripten builds.
-- `build/` - desktop build artifacts (Visual Studio/msvc builds on Windows).
-- `build_web/` - Emscripten/Ninja web build output.
+This project shows a small ImGui + SDL3 application that can be built for desktop (WGPU-native) or for web (Emscripten).
+# sdl3_wgpu
+
+Minimal example demonstrating Dear ImGui with SDL3 and WebGPU (native WGPU or Emscripten).
+
+This project shows a small ImGui + SDL3 application that can be built for desktop (WGPU-native) or for web (Emscripten).
+
+## Quick Start
+
+- **Desktop (Windows / Linux / macOS):** build with CMake and point `IMGUI_WGPU_DIR` at a WGPU-native SDK.
+- **Web (Emscripten):** configure with `emcmake` + Ninja and serve `build_web/index.html` with `emrun`.
 
 ## Prerequisites
 
-- CMake >= 3.22
-- A C++17-capable compiler (MSVC, clang, gcc)
-- Git (for FetchContent)
+- `cmake` >= 3.22
+- A C++17 capable compiler (MSVC, clang, gcc)
+- `git` (FetchContent uses Git)
 
-For desktop (WGPU-native):
-- Download a prebuilt WGPU-native SDK binary for your platform from: https://github.com/gfx-rs/wgpu-native/releases
-- Unzip the downloaded SDK somewhere accessible. The top-level folder should contain `include/` and `lib/` (or equivalent) subfolders.
+Desktop (native WGPU):
+- Download a prebuilt WGPU-native SDK for your platform (github.com/gfx-rs/wgpu-native/releases).
+- The SDK folder should contain `include/` and `lib/` (or platform-equivalent layout).
 
-For Emscripten (Web):
-- Install Emscripten SDK (emsdk) and activate a recent version (>= 4.0.15 recommended).
-- Install Ninja build tool.
+Web (Emscripten):
+- Install Emscripten SDK (`emsdk`) and activate a recent toolchain.
+- Install `ninja` for fast builds.
 
-## Desktop build (WGPU-native)
+## Desktop build (example)
 
-1. Set `IMGUI_WGPU_DIR` to point to the WGPU-native SDK folder (the folder that contains `lib/` and `include/`). Example (from project root):
+From the project root, configure and build (example Windows PowerShell):
 
 ```powershell
-cmake -B build -DIMGUI_WGPU_DIR="..\webgpu-native\v27.0.2.0\debug"
+cmake -B build -DIMGUI_WGPU_DIR="C:\path\to\webgpu-native-sdk"
 cmake --build build --config Debug
 ```
 
-2. Executable will be placed in one of the following locations depending on generator/configuration:
+Built executable locations (depending on generator/config):
 
 - `build/Debug/example_sdl3_wgpu.exe`
 - `build/example_sdl3_wgpu.exe`
 
-Notes and tips:
-- The CMake file forces SDL3 to build/static link on desktop builds (`BUILD_SHARED_LIBS OFF`).
-- On Windows the native build links against a few OS libraries (e.g. `d3dcompiler`, `ws2_32`, `opengl32`, etc.).
+Notes:
 
-## Web build (Emscripten)
+- The CMake configuration builds SDL3 statically for desktop builds (`BUILD_SHARED_LIBS=OFF`).
+- On Windows the native build may link OS libraries like `d3dcompiler`, `ws2_32`, and `opengl32` as needed.
 
-1. Configure with `emcmake` and Ninja (from project root):
+## Web build (Emscripten example)
+
+Configure with `emcmake` and `Ninja`, then build and run locally with `emrun`:
 
 ```bash
-emcmake cmake -G Ninja -B build_web
+emcmake cmake -G Ninja -B build_web -S .
 cmake --build build_web --config Debug
 emrun build_web/index.html
 ```
 
-2. The Emscripten build produces an `index.html`/`index.js`/`index.wasm` set in `build_web/`.
+Build artifacts: `build_web/index.html`, `build_web/index.js`, `build_web/index.wasm`.
 
-Notes:
-- The CMakeLists will detect Emscripten and apply the appropriate WebGPU flag. For modern Emscripten versions the default is `--use-port=emdawnwebgpu` (Dawn backend). Older Emscripten versions use `-sUSE_WEBGPU=1`.
-- If you need to override the WebGPU port, pass `-DIMGUI_EMSCRIPTEN_WEBGPU_FLAG="--use-port=path/to/emdawnwebgpu.port.py"` to the CMake configure step.
+## Run (Desktop)
 
-Additional Emscripten notes (Windows):
+After a successful build, run the example binary from the `build` folder, for example:
 
-- PowerShell may block running Emscripten's `.ps1` wrapper scripts by default due to execution policy. If you see an error like "emcmake.ps1 cannot be loaded because running scripts is disabled", either:
-	- Run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` in the PowerShell session (temporary), or
-	- Run the `emcmake.bat` (or use Git Bash / cmd.exe) to avoid the PowerShell wrapper being invoked.
+```powershell
+.\build\Debug\example_sdl3_wgpu.exe
+```
 
-- Newer Emscripten versions no longer accept the legacy `-sUSE_WEBGPU=1` flag; the supported approach is to use `--use-port=emdawnwebgpu` which is the default in this project. If you need the old behavior, install an older Emscripten release via `emsdk`.
+## VS Code tasks
 
-- During development I added a local compatibility header at `emscripten/html5_webgpu.h` to bridge some header differences while switching modes. This file is a small, local shim — you can remove it once your SDK and port setup are stable.
+- **CMake: Configure (Desktop)**: configure desktop build (uses `-B build`).
+- **CMake: Build (Desktop)**: build desktop binary.
+- **CMake: Configure (Emscripten)**: runs `emcmake`/`emcmake.bat` (Windows) and configures `build_web`.
+- **CMake: Build (Emscripten)**: builds the Emscripten target.
+- **Run: Emscripten (emrun)**: serves `build_web/index.html` using `emrun`.
 
-## Development notes
-
-## Using VS Code tasks
-
-- The workspace includes several VS Code tasks under `.vscode/tasks.json` to streamline building and running both desktop and web targets.
-
-- Common tasks:
-	- **CMake: Configure (Desktop)** — configures the native desktop build (`cmake -S . -B build ...`).
-	- **CMake: Build (Desktop)** — builds the native desktop binary.
-	- **CMake: Configure (Emscripten)** — runs the Emscripten configure step using the `emcmake` wrapper. On Windows this task is set to call the bundled `emcmake.bat` via the `EMSDK` environment variable.
-	- **CMake: Build (Emscripten)** — builds the web target (`build_web`). The configure task will pass `--use-port=emdawnwebgpu` by default.
-	- **Run: Emscripten (emrun)** — launches `emrun` to serve `build_web/index.html` locally.
-
-- On Windows ensure `EMSDK` environment variable points to your emsdk installation root (for example `C:\Users\you\emsdk`). The tasks reference `${env:EMSDK}` to call the `emcmake.bat`/`emrun.bat` wrappers. If you prefer, open a Git Bash or cmd.exe and run the `emcmake`/`emrun` commands manually.
-
-
-- Dear ImGui sources are included via FetchContent from a fork (`https://github.com/BrutPitt/imgui.git`), and backend files for SDL3 + WGPU are built into the example.
-- The project defines `IMGUI_EXAMPLE_SDL3_WGPU` for conditional compilation.
 
 ## Troubleshooting
 
-- If the configure step cannot find the WGPU-native library, ensure `IMGUI_WGPU_DIR` points at the SDK root and contains `lib/` and `include/`.
-- If building with Emscripten fails due to WebGPU flags, check your Emscripten SDK version; set `IMGUI_EMSCRIPTEN_WEBGPU_FLAG` explicitly if needed.
+## License & Third-party
 
-## License
+This repository includes Dear ImGui and SDL sources under their respective licenses. See `build/_deps/imgui-src/` for license texts.
 
-This repository includes third-party code (Dear ImGui and SDL) under their respective licenses. See the `build/_deps/imgui-src/` folder for license details.
+## Contact
+
+If you need help building or running the example, open an issue or contact the repository maintainer.
