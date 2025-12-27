@@ -19,6 +19,9 @@ project(SDL3_WGPU_EXE C CXX)
 
 set(SDL3_WGPU_EXE sdl3_wgpu)
 
+# EMSDK needed for web
+set(EMSDK ../emsdk)
+
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "" FORCE)
 endif()
@@ -40,8 +43,8 @@ FetchContent_MakeAvailable(SDL3)
 # ImGui
 FetchContent_Declare(
 imgui
-GIT_REPOSITORY https://github.com/BrutPitt/imgui.git
-GIT_TAG master
+GIT_REPOSITORY https://github.com/ocornut/imgui.git
+GIT_TAG docking
 GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(imgui)
@@ -65,35 +68,7 @@ ${IMGUI_DIR}/backends
 # Ensure ImGui target sees SDL3 usage requirements (include dirs, etc.)
 target_link_libraries(imgui PUBLIC SDL3-static)
 
-if(EMSCRIPTEN)
-    if(EMSCRIPTEN_VERSION VERSION_LESS "4.0.15")
-        message(FATAL_ERROR "Using Emscripten with SDL3 needs Emscripten version >= 4.0.15")
-    endif()
-    # Default to the modern emdawnwebgpu port. You can override this by passing
-    # `-DIMGUI_EMSCRIPTEN_WEBGPU_FLAG="-sUSE_WEBGPU=1"` to cmake if needed.
-    if(NOT IMGUI_EMSCRIPTEN_WEBGPU_FLAG)
-        set(IMGUI_EMSCRIPTEN_WEBGPU_FLAG "--use-port=emdawnwebgpu" CACHE STRING "Choose WebGPU implementation for Emscripten" FORCE)
-    endif()
-
-    add_compile_options(-sDISABLE_EXCEPTION_CATCHING=1 -DIMGUI_DISABLE_FILE_FUNCTIONS=1)
-else() # Native/Desktop build
-    
-	set(WEBGPU_LINK_TYPE STATIC CACHE STRING "Link type for WebGPU" FORCE)
-    FetchContent_Declare(
-      webgpu
-      GIT_REPOSITORY https://github.com/eliemichel/WebGPU-distribution.git
-      GIT_TAG main
-      GIT_SHALLOW TRUE
-    )
-    FetchContent_MakeAvailable(webgpu)
-    target_link_libraries(imgui PUBLIC webgpu)
-    target_compile_definitions(imgui PUBLIC IMGUI_IMPL_WEBGPU_BACKEND_WGPU)
-    
-endif()
-
 add_executable(${SDL3_WGPU_EXE} main.cpp)
-
-target_compile_definitions(${SDL3_WGPU_EXE} PUBLIC "IMGUI_EXAMPLE_SDL3_WGPU")
 
 # Link the executable with imgui to provide headers and implementation
 target_link_libraries(${SDL3_WGPU_EXE} PRIVATE imgui)
@@ -105,80 +80,41 @@ else()
     target_compile_options(${SDL3_WGPU_EXE} PUBLIC -Wall) # -Wextra -Wpedantic
 endif()
 
-# IMGUI_IMPL_WEBGPU_BACKEND_DAWN/WGPU internal define is set according to:
-#   EMSCRIPTEN: by used FLAG
-#     --use-port=emdawnwebgpu --> IMGUI_IMPL_WEBGPU_BACKEND_DAWN enabled (+EMSCRIPTEN)
-#     -sUSE_WEBGPU=1          --> IMGUI_IMPL_WEBGPU_BACKEND_WGPU enabled (+EMSCRIPTEN)
-#   NATIVE: by used SDK installation directory
-#     if IMGUI_DAWN_DIR is valid --> IMGUI_IMPL_WEBGPU_BACKEND_DAWN enabled
-#     if IMGUI_WGPU_DIR is valid --> IMGUI_IMPL_WEBGPU_BACKEND_WGPU enabled
-
 if(NOT EMSCRIPTEN) # WegGPU-Native settings
+	set(WEBGPU_LINK_TYPE STATIC CACHE STRING "Link type for WebGPU" FORCE)
+    FetchContent_Declare(
+      webgpu
+      GIT_REPOSITORY https://github.com/eliemichel/WebGPU-distribution.git
+      GIT_TAG main
+      GIT_SHALLOW TRUE
+    )
+    FetchContent_MakeAvailable(webgpu)
+    target_link_libraries(imgui PUBLIC webgpu)
+    target_compile_definitions(imgui PUBLIC IMGUI_IMPL_WEBGPU_BACKEND_WGPU)
+	
 	target_compile_definitions(${SDL3_WGPU_EXE} PUBLIC "IMGUI_IMPL_WEBGPU_BACKEND_WGPU")
 	target_include_directories(${SDL3_WGPU_EXE} PUBLIC ${IMGUI_WGPU_DIR}/include)
     target_link_libraries(${SDL3_WGPU_EXE} PRIVATE SDL3-static)
 else() # Emscripten settings
-    set(CMAKE_EXECUTABLE_SUFFIX ".html")
+    
+	if(EMSCRIPTEN_VERSION VERSION_LESS "4.0.15")
+        message(FATAL_ERROR "Using Emscripten with SDL3 needs Emscripten version >= 4.0.15")
+    endif()
+	
+	set(CMAKE_EXECUTABLE_SUFFIX ".html")
 
-    # Try to locate WebGPU headers provided by emdawnwebgpu port or legacy emscripten headers
-    # Prefer `webgpu/webgpu.h` (emdawnwebgpu port), fall back to `emscripten/html5_webgpu.h`.
-    find_path(EMD_WEBGPU_H
-        NAMES webgpu/webgpu.h
-        HINTS ENV EMSDK
-        PATHS "${EMSDK}/upstream/emscripten/system/include" "${EMSDK}/upstream/emscripten/system/include/webgpu"
-        NO_DEFAULT_PATH
-    )
-    if(EMD_WEBGPU_H)
-        get_filename_component(EMD_WEBGPU_DIR ${EMD_WEBGPU_H} DIRECTORY)
-        target_include_directories(imgui PUBLIC ${EMD_WEBGPU_DIR})
-        target_include_directories(${SDL3_WGPU_EXE} PUBLIC ${EMD_WEBGPU_DIR})
-    endif()
-    # If the port is available in the emscripten cache ports directory, add that include explicitly.
-    if(NOT EMD_WEBGPU_H)
-        # Try to derive the emscripten root from the CMake toolchain file location
-        if(DEFINED CMAKE_TOOLCHAIN_FILE)
-            get_filename_component(__ems_dir ${CMAKE_TOOLCHAIN_FILE} DIRECTORY)
-            get_filename_component(__ems_dir ${__ems_dir} DIRECTORY)
-            get_filename_component(__ems_dir ${__ems_dir} DIRECTORY)
-            # __ems_dir should now point to .../upstream/emscripten
-            set(EMD_PORT_INCLUDE "${__ems_dir}/cache/ports/emdawnwebgpu/emdawnwebgpu_pkg/webgpu/include")
-            if(EXISTS "${EMD_PORT_INCLUDE}")
-                target_include_directories(imgui PUBLIC ${EMD_PORT_INCLUDE})
-                target_include_directories(${SDL3_WGPU_EXE} PUBLIC ${EMD_PORT_INCLUDE})
-            endif()
-        endif()
-        # Also try common EMSDK location if the above did not find it
-        if(NOT TARGET_INCLUDE_DIR AND EXISTS "C:/Users/niran/OneDrive/Desktop/Work/emsdk/upstream/emscripten/cache/ports/emdawnwebgpu/emdawnwebgpu_pkg/webgpu/include")
-            target_include_directories(imgui PUBLIC "C:/Users/niran/OneDrive/Desktop/Work/emsdk/upstream/emscripten/cache/ports/emdawnwebgpu/emdawnwebgpu_pkg/webgpu/include")
-            target_include_directories(${SDL3_WGPU_EXE} PUBLIC "C:/Users/niran/OneDrive/Desktop/Work/emsdk/upstream/emscripten/cache/ports/emdawnwebgpu/emdawnwebgpu_pkg/webgpu/include")
-        endif()
-    endif()
+    target_include_directories(imgui PUBLIC "${EMSDK}/upstream/emscripten/cache/ports/emdawnwebgpu/emdawnwebgpu_pkg/webgpu/include")
+    target_include_directories(${SDL3_WGPU_EXE} PUBLIC "${EMSDK}/upstream/emscripten/cache/ports/emdawnwebgpu/emdawnwebgpu_pkg/webgpu/include")
 
-    find_path(EM_HTML5_WEBGPU_H
-        NAMES emscripten/html5_webgpu.h
-        HINTS ENV EMSDK
-        PATHS "${EMSDK}/upstream/emscripten/system/include" "${EMSDK}/upstream/emscripten/system/include/emscripten"
-        NO_DEFAULT_PATH
-    )
-    if(EM_HTML5_WEBGPU_H)
-        get_filename_component(EM_HTML5_WEBGPU_DIR ${EM_HTML5_WEBGPU_H} DIRECTORY)
-        target_include_directories(${SDL3_WGPU_EXE} PUBLIC ${EM_HTML5_WEBGPU_DIR})
-    endif()
-
-    if("${IMGUI_EMSCRIPTEN_WEBGPU_FLAG}" MATCHES "emdawnwebgpu")
-        target_compile_options(${SDL3_WGPU_EXE} PRIVATE -std=gnu++17 "SHELL:--use-port=emdawnwebgpu")
-        target_compile_definitions(${SDL3_WGPU_EXE} PRIVATE __EMSCRIPTEN__ IMGUI_IMPL_WEBGPU_BACKEND_DAWN)
-    else()
-        target_compile_definitions(${SDL3_WGPU_EXE} PUBLIC "IMGUI_IMPL_WEBGPU_BACKEND_WGPU")
-    endif()
-    message(STATUS "Using ${IMGUI_EMSCRIPTEN_WEBGPU_FLAG} WebGPU implementation")
+    target_compile_options(${SDL3_WGPU_EXE} PRIVATE -std=gnu++17 "SHELL:--use-port=emdawnwebgpu")
+    target_compile_definitions(${SDL3_WGPU_EXE} PRIVATE __EMSCRIPTEN__ IMGUI_IMPL_WEBGPU_BACKEND_DAWN)    
 
     # Ensure our local emscripten compatibility headers (and project root) are available
     target_include_directories(${SDL3_WGPU_EXE} PUBLIC ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/emscripten)
 
     target_compile_options(${SDL3_WGPU_EXE} PUBLIC "-sUSE_SDL=3")
     target_link_options(${SDL3_WGPU_EXE} PRIVATE
-            "${IMGUI_EMSCRIPTEN_WEBGPU_FLAG}"
+            "--use-port=emdawnwebgpu"
             "-sUSE_SDL=3"
             "-sWASM=1"
             "-sASYNCIFY=1"
