@@ -58,7 +58,7 @@ After a successful build, run the example binary from the `build` folder, for ex
 
 ## Run (Emscripten)
 
-After a successful build, run the example binary from the `build` folder, for example:
+After a successful build, run the index.html from the `build_web` folder, for example:
 
 ```powershell
 emrun build_web/index.html
