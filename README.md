@@ -3,21 +3,6 @@
 Small example project demonstrating Dear ImGui with SDL3 and WebGPU (WGPU-native or Emscripten).
 
 This repository contains a minimal ImGui + SDL3 application that can be built for desktop using WGPU-native, or for the web using Emscripten.
-# sdl3_wgpu
-
-Minimal example demonstrating Dear ImGui with SDL3 and WebGPU (native WGPU or Emscripten).
-
-This project shows a small ImGui + SDL3 application that can be built for desktop (WGPU-native) or for web (Emscripten).
-# sdl3_wgpu
-
-Minimal example demonstrating Dear ImGui with SDL3 and WebGPU (native WGPU or Emscripten).
-
-This project shows a small ImGui + SDL3 application that can be built for desktop (WGPU-native) or for web (Emscripten).
-
-## Quick Start
-
-- **Desktop (Windows / Linux / macOS):** build with CMake and point `IMGUI_WGPU_DIR` at a WGPU-native SDK.
-- **Web (Emscripten):** configure with `emcmake` + Ninja and serve `build_web/index.html` with `emrun`.
 
 ## Prerequisites
 
@@ -59,7 +44,6 @@ Configure with `emcmake` and `Ninja`, then build and run locally with `emrun`:
 ```bash
 emcmake cmake -G Ninja -B build_web -S .
 cmake --build build_web --config Debug
-emrun build_web/index.html
 ```
 
 Build artifacts: `build_web/index.html`, `build_web/index.js`, `build_web/index.wasm`.
@@ -70,6 +54,14 @@ After a successful build, run the example binary from the `build` folder, for ex
 
 ```powershell
 .\build\Debug\example_sdl3_wgpu.exe
+```
+
+## Run (Emscripten)
+
+After a successful build, run the example binary from the `build` folder, for example:
+
+```powershell
+emrun build_web/index.html
 ```
 
 ## VS Code tasks
